@@ -58,7 +58,8 @@ function showModal() {
 function hideModal() {
   _modalOverlay.hide();
   _modal.hide();
-  _modalBody.find("*").remove();
+  _modalBody.find('*').remove();
+  _modalFooter.find('*').remove();
   $(document).unbind('keyup', escHandler);
 }
 
