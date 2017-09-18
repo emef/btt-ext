@@ -1,0 +1,25 @@
+{
+  "manifest_version": 2,
+
+  "name": "BuyThisTweet",
+  "description": "Adds a buy-this-tweet button to every rendered tweet",
+  "version": "1.0",
+
+  "browser_action": {
+    "default_icon": "icon.png"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["*://twitter.com/*"],
+      "js": ["jquery.js", "btt.js"],
+      "css": ["btt.css"],
+      "run_at": "document_start"
+    }
+  ],
+
+  "permissions": [
+    "activeTab",
+    "storage"
+  ]
+}
