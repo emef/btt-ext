@@ -1,5 +1,6 @@
 from functools import partial
 import os
+from StringIO import StringIO
 import subprocess
 import tempfile
 import urllib
@@ -10,6 +11,7 @@ from flask import (
     redirect,
     render_template,
     request as flask_request,
+    send_file,
     Response,
     url_for)
 import numpy as np
@@ -58,12 +60,15 @@ def get_png():
 
   outfd, outsock_path = screenshot_tweet(tweet_id)
 
-  outsock = os.fdopen(outfd, 'rb')
-  data = outsock.read()
-  outsock.close()
-  os.remove(outsock_path)
+  try:
+    image_data = read_and_post_process(outsock_path)
 
-  return data, 200, {'Content-type': 'image/png'}
+  finally:
+    outsock = os.fdopen(outfd, 'w')
+    outsock.close()
+    os.remove(outsock_path)
+
+  return send_file(image_data, 'image/png')
 
 def screenshot_tweet(tweet_id):
   '''
@@ -87,22 +92,23 @@ def screenshot_tweet(tweet_id):
   print args
   subprocess.check_call(args)
 
-  crop_whitespace_inplace(outsock_path)
-
   return outfd, outsock_path
 
-def crop_whitespace_inplace(path):
-    pil_image = Image.open(path)
-    np_array = np.array(pil_image)
-    blank_px = [0, 0, 0, 0]
-    mask = np_array != blank_px
-    coords = np.argwhere(mask)
-    x0, y0, z0 = coords.min(axis=0)
-    x1, y1, z1 = coords.max(axis=0) + 1
-    cropped_box = np_array[x0:x1, y0:y1, z0:z1]
-    pil_image = Image.fromarray(cropped_box, 'RGBA')
-    print(pil_image.width, pil_image.height)
-    pil_image.save(path)
+def read_and_post_process(path):
+  pil_image = Image.open(path)
+  np_array = np.array(pil_image)
+  blank_px = [0, 0, 0, 0]
+  mask = np_array != blank_px
+  coords = np.argwhere(mask)
+  x0, y0, z0 = coords.min(axis=0)
+  x1, y1, z1 = coords.max(axis=0) + 1
+  cropped_box = np_array[x0:x1, y0:y1, z0:z1]
+  pil_image = Image.fromarray(cropped_box, 'RGBA')
+  # print(pil_image.width, pil_image.height)  # does not work on all versions of PIL apparently
+  img_buffer = StringIO()
+  pil_image.save(img_buffer, format='PNG')
+  img_buffer.seek(0) # only works on StringIO, not cStringIO
+  return img_buffer
 
 # render template for phantomjs to render
 @app.route('/render_template')
