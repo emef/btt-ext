@@ -1,12 +1,22 @@
-import numpy as np
+from functools import partial
+import os
 import subprocess
 import tempfile
-import os
 import urllib
+
+from flask import (
+    abort,
+    Flask,
+    redirect,
+    render_template,
+    request as flask_request,
+    Response,
+    url_for)
+import numpy as np
 from PIL import Image
 
-from flask import Flask, url_for, redirect, render_template, request as flask_request
 import requests
+from requests.auth import HTTPBasicAuth
 
 app = Flask(__name__)
 app.debug = True
@@ -24,6 +34,10 @@ TEMPLATE = 'template.html'
 OEMBED_ENDPOINT = 'https://publish.twitter.com/oembed'
 STATUS_ENDPOINT = 'https://twitter.com/statuses/'
 ZOOM = '3'
+
+SCALABLE_PRESS_API = "https://api.scalablepress.com/v2/"
+SCALABLE_PRESS_KEY = "12345"
+CHUNK_SIZE = 1024
 
 # these options could be set by the client
 DEFAULT_OPTIONS = {
@@ -97,6 +111,44 @@ def get_html():
   html = fetch_tweet(tweet_id)
   #print html
   return render_template(TEMPLATE, embed=html)
+
+@app.route('/press/<path:endpoint>', methods=('GET', 'POST'))
+def press_proxy(endpoint):
+  url = SCALABLE_PRESS_API + endpoint
+
+  make_request = None
+
+  if flask_request.method == 'GET':
+    make_request = requests.get
+    url += '?' + urllib.urlencode(flask_request.args)
+
+  elif flask_request.method == 'POST':
+    headers = {
+      'Content-type': flask_request.headers.get('Content-type'),
+      'Content-length': str(len(flask_request.data))
+    }
+    make_request = partial(
+      requests.post,
+      headers=headers,
+      data=flask_request.data)
+
+  response = make_request(
+    url,
+    stream=True,
+    auth=HTTPBasicAuth("", SCALABLE_PRESS_KEY))
+
+  print "Fetch", response.status_code, flask_request.method, url
+
+  def generate():
+    for chunk in response.iter_content(CHUNK_SIZE):
+      yield chunk
+
+  # note: does not pass along redirect header if any, would need to be rewritten
+
+  return Response(
+    generate(),
+    status=response.status_code,
+    content_type=response.headers.get('Content-type'))
 
 def fetch_tweet(tweet_id):
   get_tweet_url = STATUS_ENDPOINT + urllib.quote(tweet_id)
