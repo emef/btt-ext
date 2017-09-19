@@ -1,13 +1,16 @@
-import urllib
-import tempfile
+import numpy as np
 import subprocess
+import tempfile
 import os
+import urllib
+from PIL import Image
 
 from flask import Flask, url_for, redirect, render_template, request as flask_request
 import requests
 
 app = Flask(__name__)
-app.config.from_pyfile('config.py')
+app.debug = True
+app.threaded = True
 
 # local configuration
 PORT = 5000
@@ -55,7 +58,7 @@ def screenshot_tweet(tweet_id):
   returns (fd, path) of the temporary png file created
   '''
   print 'chrome path', CHROME_PATH
-  outfd, outsock_path = tempfile.mkstemp(suffix='png')
+  outfd, outsock_path = tempfile.mkstemp(suffix='.png')
   redirect_url = HOSTNAME + url_for('get_html', tweet_id=tweet_id)
   args = [
       CHROME_PATH,
@@ -70,14 +73,29 @@ def screenshot_tweet(tweet_id):
   print args
   subprocess.check_call(args)
 
+  crop_whitespace_inplace(outsock_path)
+
   return outfd, outsock_path
+
+def crop_whitespace_inplace(path):
+    pil_image = Image.open(path)
+    np_array = np.array(pil_image)
+    blank_px = [0, 0, 0, 0]
+    mask = np_array != blank_px
+    coords = np.argwhere(mask)
+    x0, y0, z0 = coords.min(axis=0)
+    x1, y1, z1 = coords.max(axis=0) + 1
+    cropped_box = np_array[x0:x1, y0:y1, z0:z1]
+    pil_image = Image.fromarray(cropped_box, 'RGBA')
+    print(pil_image.width, pil_image.height)
+    pil_image.save(path)
 
 # render template for phantomjs to render
 @app.route('/render_template')
 def get_html():
   tweet_id=flask_request.args.get('tweet_id')
   html = fetch_tweet(tweet_id)
-  print html
+  #print html
   return render_template(TEMPLATE, embed=html)
 
 def fetch_tweet(tweet_id):
@@ -99,5 +117,4 @@ def fetch_tweet(tweet_id):
   return response_json['html']
 
 if __name__ == '__main__':
-  app.debug = True
   app.run(threaded=True, port=PORT) # threaded is important, or else it will hang badly on render.

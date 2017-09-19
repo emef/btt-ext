@@ -1,6 +1,5 @@
 [Unit]
 Description=buythistweet http service
-Requires=buythistweet.socket
 After=network.target
 
 [Service]
@@ -10,7 +9,7 @@ Group=buythistweet
 WorkingDirectory=/opt/buythistweet
 Environment=CHROME_PATH=/usr/bin/google-chrome
 ExecStart=/opt/virtualenv/buythistweet/bin/gunicorn --pid /run/buythistweet/pid   \
-          --bind unix:/run/buythistweet/socket server:app
+          --workers 4 --bind 127.0.0.1:5000  server:app
 ExecReload=/bin/kill -s HUP $MAINPID
 ExecStop=/bin/kill -s TERM $MAINPID
 PrivateTmp=true
