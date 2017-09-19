@@ -16,9 +16,9 @@ from flask import (
     url_for)
 import numpy as np
 from PIL import Image
-
 import requests
 from requests.auth import HTTPBasicAuth
+from werkzeug.contrib.cache import FileSystemCache, NullCache
 
 app = Flask(__name__)
 app.debug = True
@@ -36,6 +36,7 @@ PRE_RENDER_PATH = os.getenv(
   '/tmp/pre_render/')
 
 PRE_RENDER_ENABLED = os.getenv('PRE_RENDER_ENABLED', 'false') == 'true'
+PRE_RENDER_PREFIX = os.getenv('PRE_RENDER_PREFIX', '0001') # change to clear cache
 
 if not os.path.exists(PRE_RENDER_PATH):
   os.makedirs(PRE_RENDER_PATH)
@@ -57,6 +58,11 @@ DEFAULT_OPTIONS = {
 }
 # more params: https://dev.twitter.com/rest/reference/get/statuses/oembed
 
+if PRE_RENDER_ENABLED:
+  cache = FileSystemCache(PRE_RENDER_PATH)
+else:
+  cache = NullCache()
+
 @app.route('/')
 def index():
   return "hello. send tweet_id GET param to /render_png and follow redirects", 200, {'Content-Type': 'text/plain'}
@@ -75,9 +81,10 @@ def get_tweet_image_stream(tweet_id):
   '''
   Get tweet screenshot image as a stream. May use pre-rendered version.
   '''
-  pre_rendered_path = os.path.join(PRE_RENDER_PATH, tweet_id + '.png')
-  if PRE_RENDER_ENABLED and os.path.exists(pre_rendered_path):
-    return open(pre_rendered_path, 'rb')
+  cache_key = 'twimg-%s-%s' % (PRE_RENDER_PREFIX, tweet_id)
+  cached_image = cache.get(cache_key)
+  if cached_image:
+    return StringIO(cached_image)
 
   outfd, outsock_path = screenshot_tweet(tweet_id)
 
@@ -89,11 +96,8 @@ def get_tweet_image_stream(tweet_id):
     outsock.close()
     os.remove(outsock_path)
 
-  if PRE_RENDER_ENABLED:
-    with open(pre_rendered_path, 'w') as f:
-      f.write(image_data.read())
-
-    image_data.seek(0)
+  if PRE_RENDER_ENABLED: # check flag despite possible NullCache to avoid needless unpacking large byte arr
+    cache.set(cache_key, image_data.getvalue())
 
   return image_data
 
