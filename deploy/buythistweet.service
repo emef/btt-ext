@@ -1,0 +1,19 @@
+[Unit]
+Description=buythistweet http service
+Requires=buythistweet.socket
+After=network.target
+
+[Service]
+PIDFile=/run/buythistweet/pid
+User=buythistweet
+Group=buythistweet
+WorkingDirectory=/opt/buythistweet
+Environment=CHROME_PATH=/usr/bin/google-chrome
+ExecStart=/opt/virtualenv/buythistweet/bin/gunicorn --pid /run/buythistweet/pid   \
+          --bind unix:/run/buythistweet/socket server:app
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s TERM $MAINPID
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

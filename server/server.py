@@ -3,24 +3,27 @@ import tempfile
 import subprocess
 import os
 
-from gevent.wsgi import WSGIServer
 from flask import Flask, url_for, redirect, render_template, request as flask_request
 import requests
 
 app = Flask(__name__)
+app.config.from_pyfile('config.py')
 
 # local configuration
-hostname = 'http://localhost:5000'
-path_to_chrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+PORT = 5000
+HOSTNAME = 'http://localhost:%d' % PORT
+CHROME_PATH = os.getenv(
+  'CHROME_PATH',
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
 
 # constants
-template = 'template.html'
-oembed_endpoint = 'https://publish.twitter.com/oembed'
-status_endpoint = 'https://twitter.com/statuses/'
-zoom = '3'
+TEMPLATE = 'template.html'
+OEMBED_ENDPOINT = 'https://publish.twitter.com/oembed'
+STATUS_ENDPOINT = 'https://twitter.com/statuses/'
+ZOOM = '3'
 
 # these options could be set by the client
-default_options = {
+DEFAULT_OPTIONS = {
   'hide_thread': 'true', # show the tweet to which you are replying
   'hide_media': 'false', # don't show images
 }
@@ -33,25 +36,10 @@ def index():
 # redirect user to phantomjs server with route back to us for template render
 @app.route('/render_png')
 def get_png():
-  tweet_id=flask_request.args.get('tweet_id')
+  tweet_id = flask_request.args.get('tweet_id')
   print tweet_id
 
-  redirect_url = hostname + url_for('get_html', tweet_id=tweet_id)
-
-  outfd, outsock_path = tempfile.mkstemp(suffix='png')
-
-  args = [
-      path_to_chrome,
-      '--headless',
-      '--disable-gpu', # this kludge is required by current version of chrome
-      '--screenshot=' + outsock_path,
-      redirect_url,
-      '--virtual-time-budget=1000', # add time to let javascript etc load.
-      '--force-device-scale-factor=' + zoom, # zoom to render in higher DPI
-      '--default-background-color=0', # what forces the background transparent
-      '--window-size=516,700'] # 516 is tweet width = 500 exactly, + 8 (x2) for default html body padding. height is just whatever max
-  print args
-  subprocess.check_call(args)
+  outfd, outsock_path = screenshot_tweet(tweet_id)
 
   outsock = os.fdopen(outfd, 'rb')
   data = outsock.read()
@@ -60,20 +48,48 @@ def get_png():
 
   return data, 200, {'Content-type': 'image/png'}
 
+def screenshot_tweet(tweet_id):
+  '''
+  Take a screenshot of the given tweet via headless chrome.
+
+  returns (fd, path) of the temporary png file created
+  '''
+  print 'chrome path', CHROME_PATH
+  outfd, outsock_path = tempfile.mkstemp(suffix='png')
+  redirect_url = HOSTNAME + url_for('get_html', tweet_id=tweet_id)
+  args = [
+      CHROME_PATH,
+      '--headless',
+      '--disable-gpu', # this kludge is required by current version of chrome
+      '--screenshot=' + outsock_path,
+      redirect_url,
+      '--virtual-time-budget=1000', # add time to let javascript etc load.
+      '--force-device-scale-factor=' + ZOOM, # ZOOM to render in higher DPI
+      '--default-background-color=0', # what forces the background transparent
+      '--window-size=516,700'] # 516 is tweet width = 500 exactly, + 8 (x2) for default html body padding. height is just whatever max
+  print args
+  subprocess.check_call(args)
+
+  return outfd, outsock_path
+
 # render template for phantomjs to render
 @app.route('/render_template')
 def get_html():
   tweet_id=flask_request.args.get('tweet_id')
   html = fetch_tweet(tweet_id)
   print html
-  return render_template(template, embed=html)
+  return render_template(TEMPLATE, embed=html)
 
 def fetch_tweet(tweet_id):
-  get_tweet_url = status_endpoint + urllib.quote(tweet_id)
+  get_tweet_url = STATUS_ENDPOINT + urllib.quote(tweet_id)
   print get_tweet_url
   redir = requests.head(get_tweet_url, allow_redirects=True)
   print redir.url
-  get_embed_url = '%s?%s' % (oembed_endpoint, urllib.urlencode(dict(url=redir.url, omit_script='true', **default_options)))
+  querystring = urllib.urlencode(dict(
+    url=redir.url,
+    omit_script='true',
+    **DEFAULT_OPTIONS))
+  get_embed_url = '%s?%s' % (OEMBED_ENDPOINT, querystring)
   print get_embed_url
   response = requests.get(get_embed_url)
 
@@ -84,4 +100,4 @@ def fetch_tweet(tweet_id):
 
 if __name__ == '__main__':
   app.debug = True
-  app.run(threaded=True) # threaded is important, or else it will hang badly on render.
+  app.run(threaded=True, port=PORT) # threaded is important, or else it will hang badly on render.
