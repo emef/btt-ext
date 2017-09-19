@@ -31,6 +31,15 @@ CHROME_PATH = os.getenv(
   'CHROME_PATH',
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
 
+PRE_RENDER_PATH = os.getenv(
+  'PRE_RENDER_PATH',
+  '/tmp/pre_render/')
+
+PRE_RENDER_ENABLED = os.getenv('PRE_RENDER_ENABLED', 'false') == 'true'
+
+if not os.path.exists(PRE_RENDER_PATH):
+  os.makedirs(PRE_RENDER_PATH)
+
 # constants
 TEMPLATE = 'template.html'
 OEMBED_ENDPOINT = 'https://publish.twitter.com/oembed'
@@ -58,6 +67,18 @@ def get_png():
   tweet_id = flask_request.args.get('tweet_id')
   print tweet_id
 
+  image_data = get_tweet_image_stream(tweet_id)
+
+  return send_file(image_data, 'image/png')
+
+def get_tweet_image_stream(tweet_id):
+  '''
+  Get tweet screenshot image as a stream. May use pre-rendered version.
+  '''
+  pre_rendered_path = os.path.join(PRE_RENDER_PATH, tweet_id + '.png')
+  if PRE_RENDER_ENABLED and os.path.exists(pre_rendered_path):
+    return open(pre_rendered_path, 'rb')
+
   outfd, outsock_path = screenshot_tweet(tweet_id)
 
   try:
@@ -68,7 +89,13 @@ def get_png():
     outsock.close()
     os.remove(outsock_path)
 
-  return send_file(image_data, 'image/png')
+  if PRE_RENDER_ENABLED:
+    with open(pre_rendered_path, 'w') as f:
+      f.write(image_data.read())
+
+    image_data.seek(0)
+
+  return image_data
 
 def screenshot_tweet(tweet_id):
   '''
@@ -76,7 +103,6 @@ def screenshot_tweet(tweet_id):
 
   returns (fd, path) of the temporary png file created
   '''
-  print 'chrome path', CHROME_PATH
   outfd, outsock_path = tempfile.mkstemp(suffix='.png')
   redirect_url = HOSTNAME + url_for('get_html', tweet_id=tweet_id)
   args = [
@@ -85,7 +111,7 @@ def screenshot_tweet(tweet_id):
       '--disable-gpu', # this kludge is required by current version of chrome
       '--screenshot=' + outsock_path,
       redirect_url,
-      '--virtual-time-budget=1000', # add time to let javascript etc load.
+      '--virtual-time-budget=3000', # add time to let javascript etc load.
       '--force-device-scale-factor=' + ZOOM, # ZOOM to render in higher DPI
       '--default-background-color=0', # what forces the background transparent
       '--window-size=516,700'] # 516 is tweet width = 500 exactly, + 8 (x2) for default html body padding. height is just whatever max
@@ -104,7 +130,6 @@ def read_and_post_process(path):
   x1, y1, z1 = coords.max(axis=0) + 1
   cropped_box = np_array[x0:x1, y0:y1, z0:z1]
   pil_image = Image.fromarray(cropped_box, 'RGBA')
-  # print(pil_image.width, pil_image.height)  # does not work on all versions of PIL apparently
   img_buffer = StringIO()
   pil_image.save(img_buffer, format='PNG')
   img_buffer.seek(0) # only works on StringIO, not cStringIO

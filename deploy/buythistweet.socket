@@ -1,8 +1,0 @@
-[Unit]
-Description=buythistweet gunicorn socket
-
-[Socket]
-ListenStream=/run/buythistweet/socket
-
-[Install]
-WantedBy=sockets.target
