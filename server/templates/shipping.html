@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Bootstrap 101 Template</title>
+    <title>Checkout page</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js"></script>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
@@ -22,7 +22,51 @@ $(document).ready(function(){
     } else {
       $('#billing-details').show(400);
     }
-  });  
+  });
+
+  $('.form-group input').change(function() {
+    $(this).parent().removeClass('has-error');
+    $('#order-button').removeAttr('disabled');
+  });
+
+  $('#order-button').click(function(e) {
+    e.preventDefault();
+    var isValid = true;
+    var required_fields = [
+      "full-name", "address-line1", "city", "region", "country"
+    ];
+
+    for (var i = 0; i < required_fields.length; i++) {
+      var el = $('#' + required_fields[i]);
+      if (el.val().length === 0) {
+        el.parent().addClass('has-error');
+        isValid = false;
+      } else {
+        el.parent().removeClass('has-error');
+      }
+    }
+
+    if (!$('#same-as-shipping').prop('checked')) {
+      for (var i = 0; i < required_fields.length; i++) {
+        var el = $('#billing-' + required_fields[i]);
+        if (el.val().length === 0) {
+          el.parent().addClass('has-error');
+          isValid = false;
+        } else {
+          el.parent().removeClass('has-error');
+        }
+      }
+    }
+
+    if (!isValid) {
+      $('#submit-help').text("please fix required fields");
+      $('#order-button').attr('disabled', 'disabled');
+    } else if (!$('#like-tos').prop('checked')) {
+      $('#submit-help').text("Don't you like the terms of service?");
+    } else {
+      $('#submit-help').text("Would have submitted");
+    }
+  });
 });
 
 </script>
@@ -61,7 +105,7 @@ $(document).ready(function(){
   <div class="row">
     <div class="col-xs-4">
      <form>
-         
+
                 <!-- full-name input-->
                 <div class="form-group">
                     <label class="control-label">Full Name</label>
@@ -127,48 +171,48 @@ $(document).ready(function(){
           </label>
         </div>
         <div id="billing-details">
-        
+
         <!-- full-name input-->
         <div class="form-group">
             <label class="control-label">Full Name</label>
-                <input id="full-name" name="full-name" type="text" placeholder="full name"
+                <input id="billing-full-name" name="billing-full-name" type="text" placeholder="full name"
                 class="form-control form-control-large">
         </div>
         <!-- address-line1 input-->
         <div class="form-group">
             <label class="control-label">Address Line 1</label>
-                <input id="address-line1" name="address-line1" type="text" placeholder="address line 1"
+                <input id="billing-address-line1" name="billing-address-line1" type="text" placeholder="address line 1"
                 class="form-control form-control-large">
                 <p class="help-block">Street address, P.O. box, company name, c/o</p>
         </div>
         <!-- address-line2 input-->
         <div class="form-group">
             <label class="control-label">Address Line 2</label>
-                <input id="address-line2" name="address-line2" type="text" placeholder="address line 2"
+                <input id="billing-address-line2" name="billing-address-line2" type="text" placeholder="address line 2"
                 class="form-control form-control-large">
                 <p class="help-block">Apartment, suite , unit, building, floor, etc.</p>
         </div>
         <!-- city input-->
         <div class="form-group">
             <label class="control-label">City / Town</label>
-                <input id="city" name="city" type="text" placeholder="city" class="form-control form-control-large">
+                <input id="billing-city" name="billing-city" type="text" placeholder="city" class="form-control form-control-large">
         </div>
         <!-- region input-->
         <div class="form-group">
             <label class="control-label">State / Province / Region</label>
-                <input id="region" name="region" type="text" placeholder="state / province / region"
+                <input id="billing-region" name="billing-region" type="text" placeholder="state / province / region"
                 class="form-control form-control-large">
         </div>
         <!-- postal-code input-->
         <div class="form-group">
             <label class="control-label">Zip / Postal Code</label>
-                <input id="postal-code" name="postal-code" type="text" placeholder="zip or postal code"
+                <input id="billing-postal-code" name="billing-postal-code" type="text" placeholder="zip or postal code"
                 class="form-control form-control-large">
         </div>
         <!-- country select -->
         <div class="form-group">
             <label class="control-label">Country</label>
-                <select id="country" name="country" class="form-control form-control-large">
+                <select id="billing-country" name="billing-country" class="form-control form-control-large">
                     <option value="" selected="selected">(please select a country)</option>
                     <option value="US">United States</option>
                     <option value="CA">Canada</option>
@@ -186,13 +230,21 @@ $(document).ready(function(){
 </div>
 
 <div class="row">
-  stripe gateway goes here
+     <div class="col-xs-4">
+   stripe gateway goes here
+<form>
 
        <div class="checkbox">
           <label>
-            <input type="checkbox"> I totally agree with the terms of service
+            <input type="checkbox" id="like-tos" name="like-tos"> I totally agree with the terms of service
           </label>
         </div>
+
+<button class="btn btn-primary" id="order-button">Order Now</button>
+<p class="help-block" id="submit-help"></p>
+
+</form>
+</div>
 </div>
 
 </div>
