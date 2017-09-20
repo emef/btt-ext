@@ -140,7 +140,7 @@ def screenshot_tweet(tweet_id):
       '--virtual-time-budget=3000', # add time to let javascript etc load.
       '--force-device-scale-factor=' + ZOOM, # ZOOM to render in higher DPI
       '--default-background-color=0', # what forces the background transparent
-      '--window-size=516,700'] # 516 is tweet width = 500 exactly, + 8 (x2) for default html body padding. height is just whatever max
+      '--window-size=516,1500'] # 516 is tweet width = 500 exactly, + 8 (x2) for default html body padding. height is just whatever max
   print args
   subprocess.check_call(args)
 
