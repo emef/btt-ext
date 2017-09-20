@@ -1,12 +1,12 @@
-from functools import partial
 import json
 import os
 import re
-from StringIO import StringIO
 import subprocess
+import sys
 import tempfile
 import urllib
-import sys
+from functools import partial
+from StringIO import StringIO
 
 from flask import (
     abort,
@@ -18,11 +18,10 @@ from flask import (
     Response,
     url_for)
 import numpy as np
-from PIL import Image
-
 import requests
 from requests.auth import HTTPBasicAuth
-from werkzeug.contrib.cache import FileSystemCache, NullCache, SimpleCache
+from werkzeug.contrib.cache import SimpleCache
+from PIL import Image
 
 app = Flask(__name__)
 app.debug = True
@@ -35,15 +34,19 @@ CHROME_PATH = os.getenv(
   'CHROME_PATH',
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
 
-PRE_RENDER_PATH = os.getenv(
-  'PRE_RENDER_PATH',
-  '/tmp/pre_render/')
+RENDERED_TWEET_PATH = os.getenv(
+  'RENDERED_TWEET_PATH',
+  '/tmp/img/tweets/')
 
-PRE_RENDER_ENABLED = os.getenv('PRE_RENDER_ENABLED', 'false') == 'true'
-PRE_RENDER_PREFIX = os.getenv('PRE_RENDER_PREFIX', '0001') # change to clear cache
+RENDERED_MOCKUP_PATH = os.getenv(
+  'RENDERED_MOCKUP_PATH',
+  '/tmp/img/mockups/')
 
-if not os.path.exists(PRE_RENDER_PATH):
-  os.makedirs(PRE_RENDER_PATH)
+if not os.path.exists(RENDERED_TWEET_PATH):
+  os.makedirs(RENDERED_TWEET_PATH)
+
+if not os.path.exists(RENDERED_MOCKUP_PATH):
+  os.makedirs(RENDERED_MOCKUP_PATH)
 
 # constants
 TEMPLATE = 'template.html'
@@ -66,12 +69,7 @@ DEFAULT_OPTIONS = {
 
 LOG = open('/opt/buythistweet/buythistweet.log', 'a')
 
-if PRE_RENDER_ENABLED:
-  render_cache = FileSystemCache(PRE_RENDER_PATH)
-else:
-  render_cache = NullCache()
-
-oembed_cache = SimpleCache() # memcached would be better
+OEMBED_CACHE = SimpleCache() # memcached would be better
 
 @app.route('/')
 def index():
@@ -91,33 +89,33 @@ def get_png():
 def get_tshirt_mockup():
   tweet_id = flask_request.args.get('tweet_id')
   color = flask_request.args.get('color', 'White')
-  image_data = get_tweet_image_stream(tweet_id)
-  mockup_response = scalable_press_mockup_api(tweet_id, image_data, color)
-  LOG.write(json.dumps(mockup_response) + '\n')
 
-  if 'url' in mockup_response:
+  pre_rendered_path = os.path.join(RENDERED_MOCKUP_PATH, '%s_%s.png' % (tweet_id, color))
+  if not os.path.exists(pre_rendered_path):
+    image_data = get_tweet_image_stream(tweet_id)
+    mockup_response = scalable_press_mockup_api(tweet_id, image_data, color)
+    LOG.write(json.dumps(mockup_response) + '\n')
+
+    if 'url' not in mockup_response:
+      # error
+      response = json.dumps(mockup_response)
+      return response, 200,  {'Content-Type': 'application/json'}
+
     url = mockup_response['url']
-    LOG.write('streaming ' + url + '\n')
     with requests.get(url, stream=True) as img_stream:
-      return Response(
-        # (chunk for chunk in img_stream.iter_content(CHUNK_SIZE)),
-        img_stream.content,
-        status=200,
-        content_type='image/png')
+      with open(pre_rendered_path, 'wb') as f:
+        for chunk in img_stream:
+          f.write(chunk)
 
-  else:
-    # error
-    response = json.dumps(mockup_response)
-    return response, 200,  {'Content-Type': 'application/json'}
+  return send_file(open(pre_rendered_path, 'rb'), 'image/png')
 
 def get_tweet_image_stream(tweet_id):
   '''
   Get tweet screenshot image as a stream. May use pre-rendered version.
   '''
-  cache_key = 'twimg-%s-%s' % (PRE_RENDER_PREFIX, tweet_id)
-  cached_image = render_cache.get(cache_key)
-  if cached_image:
-    return StringIO(cached_image)
+  pre_rendered_path = os.path.join(RENDERED_TWEET_PATH, tweet_id + '.png')
+  if os.path.exists(pre_rendered_path):
+    return open(pre_rendered_path, 'rb')
 
   outfd, outsock_path = screenshot_tweet(tweet_id)
 
@@ -129,9 +127,10 @@ def get_tweet_image_stream(tweet_id):
     outsock.close()
     os.remove(outsock_path)
 
-  if PRE_RENDER_ENABLED: # check flag despite possible NullCache to avoid needless unpacking large byte arr
-    render_cache.set(cache_key, image_data.getvalue())
+  with open(pre_rendered_path, 'w') as f:
+    f.write(image_data.read())
 
+  image_data.seek(0)
   return image_data
 
 def screenshot_tweet(tweet_id):
@@ -298,7 +297,7 @@ def press_proxy(endpoint):
     content_type=response.headers.get('Content-type'))
 
 def fetch_tweet(tweet_id):
-  cached = oembed_cache.get(tweet_id)
+  cached = OEMBED_CACHE.get(tweet_id)
   if cached:
     return json.loads(cached)
 
@@ -314,7 +313,7 @@ def fetch_tweet(tweet_id):
   print get_embed_url
   response = requests.get(get_embed_url)
 
-  oembed_cache.set(tweet_id, response.text)
+  OEMBED_CACHE.set(tweet_id, response.text)
 
   response_json = response.json()
 
@@ -327,7 +326,7 @@ def scalable_press_mockup_api(tweet_id, img_data, color):
     'product[id]': 'canvas-unisex-t-shirt',
     'product[color]': color,
     'design[type]': 'dtg',
-    'design[sides][front][artwork]': '%simg/%s.png' % (flask_request.host_url, tweet_id),
+    'design[sides][front][artwork]': '%simg/tweets/%s.png' % (flask_request.host_url, tweet_id),
     'design[sides][front][dimensions][width]': '8',
     'design[sides][front][position][horizontal]': 'C',
     'design[sides][front][position][offset][top]': '2.5',
