@@ -103,11 +103,19 @@ def get_tshirt_mockup():
 
     url = mockup_response['url']
     with requests.get(url, stream=True) as img_stream:
+      buf = StringIO()
+      for chunk in img_stream:
+        buf.write(chunk)
+      buf.seek(0)
+      img = post_process_mockup(Image.open(buf))
+
       with open(pre_rendered_path, 'wb') as f:
-        for chunk in img_stream:
-          f.write(chunk)
+        img.save(f, format='PNG')
 
   return send_file(open(pre_rendered_path, 'rb'), 'image/png')
+
+def post_process_mockup(img):
+  return img.crop((250, 100, 750, 550))
 
 def get_tweet_image_stream(tweet_id):
   '''
