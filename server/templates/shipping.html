@@ -24,6 +24,15 @@ body {
   padding-top: 50px;
   padding-bottom: 200px;
 }
+
+.tweet-text {
+  font-size: 14px;
+  line-height: 20px;
+  padding: .5em;
+  border-left: 2px solid #c0deed;
+  border-right: 2px solid #c0deed;
+}
+
 </style>
 
 <script>
@@ -233,7 +242,7 @@ $(document).ready(function(){
       <img src='{{ preview_img }}' height=300 width=250>
       <div class="caption">
         <h3>{{ product_name }}</h3>
-        <p>{{ tweet_text|safe }}</p>
+        <p class="tweet-text">{{ tweet_text|safe }}</p>
         <table class="subtotal ">
         <tr><th>Size:</td><td>{{ size|title }}</td></tr>
         <tr><th>Color:</td><td>{{ color|title }}</td></tr>
