@@ -12,6 +12,12 @@
 .subtotal td, .subtotal th {
   padding: .25em;
 }
+
+body {
+  position: relative; /* required for scrollspy */
+  padding-top: 50px;
+  padding-bottom: 200px;
+}
 </style>
 
 <script>
@@ -70,7 +76,19 @@ $(document).ready(function(){
 
 </script>
   </head>
-<body>
+<body data-spy="scroll" data-target=".navbar" data-offset="100">
+
+<nav class="navbar navbar-fixed-top navbar-default">
+  <div class="container">
+    <ul class="nav navbar-nav">
+      <li><a href="#preview">Preview</a></li>
+      <li><a href="#contact">Contact</a></li>
+      <li><a href="#shipping">Shipping</a></li>
+      <li><a href="#billing">Billing</a></li>
+      <li><a href="#payment">Payment</a></li>
+    </ul>
+  </div>
+</nav>
 
 <div class="container">
 
@@ -97,7 +115,7 @@ $(document).ready(function(){
   </div>
 </div>
 
-<div class="page-header" id="shipping">
+<div class="page-header" id="contact">
 <h1>Contact <small>Step 2 of 5</small></h1>
 </div>
 
@@ -254,7 +272,7 @@ $(document).ready(function(){
 </div>
   </div>
 
-<div class="page-header" id="billing">
+<div class="page-header" id="payment">
 <h1>Payment <small>Step 5 of 5</small></h1>
 </div>
 
