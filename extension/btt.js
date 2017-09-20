@@ -73,8 +73,8 @@ function onClickBuyThisTweet(tweetId) {
   log('clicked', tweetId);
   showModal();
 
-  // TODO: dynamic image from tweetId
-  _modalBody.append($('<img src="https://oo-prod.s3.amazonaws.com/public/mockups/59c050d2eed6400a238d694e.png" />'));
+  var src = 'http://btt.brbrb.us/get_tshirt_mockup?tweet_id=' + tweetId + '&color=White';
+  _modalBody.append($('<img src="' + src + '" />'));
 
   // TODO: dynamic tweet author
   var handle = 'Interior';
