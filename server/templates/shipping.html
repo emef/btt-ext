@@ -65,12 +65,13 @@ $(document).ready(function(){
     "billing-full-name", "billing-address-line1", "billing-city", "billing-region", "billing-country"
   ];
 
-  var validate = function(updateUI) {
+  var check_validate = function(updateUI) {
     var missingFields = false;
     var notChecked = false;
 
+    var fields_to_check = required_fields;
     if (!$('#same-as-shipping').prop('checked')) {
-      required_fields = required_fields.concat(billing_required_fields);
+      fields_to_check = required_fields.concat(billing_required_fields);
     }
 
     for (var i = 0; i < required_fields.length; i++) {
@@ -148,6 +149,8 @@ $(document).ready(function(){
     shipping_details.state = $('region').value();
   };
 
+  var reenable_callback = function(){};
+
   var payment_definition = {
 
     env: 'sandbox', // sandbox | production
@@ -169,15 +172,19 @@ $(document).ready(function(){
     },
 
     validate: function(actions) {
-      if (validate(false)) {
+      if (check_validate(false)) {
         actions.enable();
+        reenable_callback = function() {};
       } else {
         actions.disable();
+        reenable_callback = function() { actions.enable(); };
       }
     },
 
     onClick: function() {
-      validate(true);
+      if (check_validate(true)) {
+        reenable_callback();
+      }
     },
 
     payment: function(data, actions) { // user clicks on pay button
@@ -247,7 +254,7 @@ $(document).ready(function(){
         <tr><th>Size:</td><td>{{ size|title }}</td></tr>
         <tr><th>Color:</td><td>{{ color|title }}</td></tr>
         <tr><th>Quantity:</td><td>{{ quantity }}</td></tr>
-        <tr><th>Subtotal:</td><td>${{ subtotal|round(2) }}</td></tr>
+        <tr><th>Subtotal:</td><td>${{ "%0.2f"|format(subtotal) }}</td></tr>
         </table>
       </div>
     </div>
@@ -422,10 +429,10 @@ $(document).ready(function(){
   <div class="col-xs-4">
     <h3>Totals</h3>
     <table class="subtotal ">
-    <tr><th>Men's {{size|title}} T-shirts x {{quantity}}:</td><td>${{subtotal|round(2)}}</td></tr>
-    <tr><th>Shipping</td><td>${{shipping_cost|round(2)}}</td></tr>
-    <tr><th>Tax</td><td>${{tax|round(2)}}</td></tr>
-    <tr><th>Total cost</td><td>${{total_cost|round(2)}}</td></tr>
+    <tr><th>Men's {{size|title}} T-shirts x {{quantity}}:</td><td>${{ "%0.2f"|format(subtotal) }}</td></tr>
+    <tr><th>Shipping</td><td>${{ "%0.2f"|format(shipping_cost) }}</td></tr>
+    <tr><th>Tax</td><td>${{ "%0.2f"|format(tax) }}</td></tr>
+    <tr><th>Total cost</td><td>${{ "%0.2f"|format(total_cost) }}</td></tr>
     </table>
   </div>
 </div>
