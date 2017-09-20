@@ -77,7 +77,7 @@ def get_png():
 @app.route('/get_tshirt_mockup')
 def get_tshirt_mockup():
   tweet_id = flask_request.args.get('tweet_id')
-  color = flask_request.args.get('tweet_id', 'White')
+  color = flask_request.args.get('color', 'White')
   image_data = get_tweet_image_stream(tweet_id)
   mockup_response = scalable_press_mockup_api(tweet_id, image_data, color)
   LOG.write(json.dumps(mockup_response) + '\n')
