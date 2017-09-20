@@ -4,6 +4,7 @@ from StringIO import StringIO
 import subprocess
 import tempfile
 import urllib
+import json
 
 from flask import (
     abort,
@@ -47,7 +48,7 @@ STATUS_ENDPOINT = 'https://twitter.com/statuses/'
 ZOOM = '3'
 
 SCALABLE_PRESS_API = "https://api.scalablepress.com/v2/"
-SCALABLE_PRESS_KEY = "12345"
+SCALABLE_PRESS_KEY = os.getenv("SCALABLE_PRESS_KEY", "12345")
 CHUNK_SIZE = 1024
 
 # these options could be set by the client
@@ -56,6 +57,8 @@ DEFAULT_OPTIONS = {
   'hide_media': 'false', # don't show images
 }
 # more params: https://dev.twitter.com/rest/reference/get/statuses/oembed
+
+LOG = open('/opt/buythistweet/buythistweet.log', 'a')
 
 @app.route('/')
 def index():
@@ -70,6 +73,29 @@ def get_png():
   image_data = get_tweet_image_stream(tweet_id)
 
   return send_file(image_data, 'image/png')
+
+@app.route('/get_tshirt_mockup')
+def get_tshirt_mockup():
+  tweet_id = flask_request.args.get('tweet_id')
+  color = flask_request.args.get('tweet_id', 'White')
+  image_data = get_tweet_image_stream(tweet_id)
+  mockup_response = scalable_press_mockup_api(tweet_id, image_data, color)
+  LOG.write(json.dumps(mockup_response) + '\n')
+
+  if 'url' in mockup_response:
+    url = mockup_response['url']
+    LOG.write('streaming ' + url + '\n')
+    with requests.get(url, stream=True) as img_stream:
+      return Response(
+        # (chunk for chunk in img_stream.iter_content(CHUNK_SIZE)),
+        img_stream.content,
+        status=200,
+        content_type='image/png')
+
+  else:
+    # error
+    response = json.dumps(mockup_response)
+    return response, 200,  {'Content-Type': 'application/json'}
 
 def get_tweet_image_stream(tweet_id):
   '''
@@ -198,6 +224,31 @@ def fetch_tweet(tweet_id):
 
   # note: can tell the type of the tweet using "type" field
   return response_json['html']
+
+def scalable_press_mockup_api(tweet_id, img_data, color):
+  fields = {
+    'template[name]': 'front',
+    'product[id]': 'canvas-unisex-t-shirt',
+    'product[color]': color,
+    'design[type]': 'dtg',
+    'design[sides][front][artwork]': '%simg/%s.png' % (flask_request.host_url, tweet_id),
+    'design[sides][front][dimensions][width]': '8',
+    'design[sides][front][position][horizontal]': 'C',
+    'design[sides][front][position][offset][top]': '2.5',
+    'output[width]': '1000',
+    'output[height]': '1000',
+    'padding[height]': '10',
+    'output[format]': 'png',
+  }
+
+  r = requests.post(
+    'https://api.scalablepress.com/v3/mockup',
+    data=fields,
+    auth=HTTPBasicAuth('', SCALABLE_PRESS_KEY))
+
+  return r.json()
+
+
 
 if __name__ == '__main__':
   app.run(threaded=True, port=PORT) # threaded is important, or else it will hang badly on render.

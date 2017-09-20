@@ -29,9 +29,9 @@ deploy() {
     ssh $BTT_HOST "mkdir -p ./buythistweet"
     ssh $BTT_HOST "rm -rf ./buythistweet/*"
     rsync -az --exclude node_modules $APPDIR $BTT_HOST:./buythistweet/
-    ssh $BTT_HOST "sudo mkdir -p /opt/buythistweet"
-    ssh $BTT_HOST "sudo rm -rf /opt/buythistweet/*"
-    ssh $BTT_HOST "sudo mv buythistweet/* /opt/buythistweet"
+    ssh $BTT_HOST "sudo mkdir -p /opt/buythistweet/server"
+    ssh $BTT_HOST "sudo rm -rf /opt/buythistweet/server/*"
+    ssh $BTT_HOST "sudo mv buythistweet/server/* /opt/buythistweet/server/"
     ssh $BTT_HOST "rm -rf ./buythistweet"
     ssh $BTT_HOST "sudo chown -R buythistweet /opt/buythistweet"
 
