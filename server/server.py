@@ -48,6 +48,7 @@ if not os.path.exists(PRE_RENDER_PATH):
 # constants
 TEMPLATE = 'template.html'
 SHIPPING_TEMPLATE = 'shipping.html'
+COMPLETE_TEMPLATE = 'complete.html'
 OEMBED_ENDPOINT = 'https://publish.twitter.com/oembed'
 STATUS_ENDPOINT = 'https://twitter.com/statuses/'
 ZOOM = '3'
@@ -209,6 +210,10 @@ def get_product_cost(product_type_code, color, size, quantity):
 def get_shipping_cost(product_type_code, color, size, quantity):
   return 2.95 + (quantity * .75)
 
+# STUB
+def get_tax(product_type_code, color, size, quantity):
+  return 0
+
 @app.route('/order_form')
 def render_checkout():
   try:
@@ -227,7 +232,8 @@ def render_checkout():
   product_name = get_product_title(product_type)
   subtotal = get_product_cost(product_type, product_color, product_size, quantity)
   shipping_cost = get_shipping_cost(product_type, product_color, product_size, quantity)
-  total_cost = shipping_cost + subtotal
+  tax = get_shipping_cost(product_type, product_color, product_size, quantity)
+  total_cost = shipping_cost + subtotal + tax
 
   preview_img = url_for('get_tshirt_mockup', tweet_id=tweet_id, color=product_color)
 
@@ -239,14 +245,17 @@ def render_checkout():
 
   return render_template(SHIPPING_TEMPLATE,
     product_name=product_name,
+    product_type=product_type,
     author_handle=author_handle,
     author_name=author_name,
+    tweet_id=tweet_id,
     tweet_text=tweet_text,
     quantity=quantity,
     preview_img=preview_img,
     color=product_color,
     size=product_size,
     subtotal=subtotal,
+    tax=tax,
     shipping_cost=shipping_cost,
     total_cost=total_cost)
 
@@ -334,6 +343,16 @@ def scalable_press_mockup_api(tweet_id, img_data, color):
     auth=HTTPBasicAuth('', SCALABLE_PRESS_KEY))
 
   return r.json()
+
+@app.route('/order_finished', methods=('POST',))
+def order_finished():
+  # order details should be in flask_request.form
+  return redirect(url_for('complete'))
+
+@app.route('/complete')
+def complete():
+  return render_template(COMPLETE_TEMPLATE)
+
 
 if __name__ == '__main__':
   app.run(threaded=True, port=PORT) # threaded is important, or else it will hang badly on render.
