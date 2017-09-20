@@ -23,6 +23,7 @@ $(document).ready(function(){
     } else {
       $('#billing-details').show(400);
     }
+    $('#billing-form input').parent().removeClass('has-error');
   });
 
   $('.form-group input').change(function() {
@@ -30,12 +31,21 @@ $(document).ready(function(){
     $('#order-button').removeAttr('disabled');
   });
 
+  var required_fields = [
+    "email", "full-name", "address-line1", "city", "region", "country"
+  ];
+
+  var billing_required_fields = [
+    "billing-full-name", "billing-address-line1", "billing-city", "billing-region", "billing-country"
+  ];
+
   $('#order-button').click(function(e) {
     e.preventDefault();
     var isValid = true;
-    var required_fields = [
-      "full-name", "address-line1", "city", "region", "country"
-    ];
+
+    if (!$('#same-as-shipping').prop('checked')) {
+      required_fields = required_fields.concat(billing_required_fields);
+    }
 
     for (var i = 0; i < required_fields.length; i++) {
       var el = $('#' + required_fields[i]);
@@ -44,18 +54,6 @@ $(document).ready(function(){
         isValid = false;
       } else {
         el.parent().removeClass('has-error');
-      }
-    }
-
-    if (!$('#same-as-shipping').prop('checked')) {
-      for (var i = 0; i < required_fields.length; i++) {
-        var el = $('#billing-' + required_fields[i]);
-        if (el.val().length === 0) {
-          el.parent().addClass('has-error');
-          isValid = false;
-        } else {
-          el.parent().removeClass('has-error');
-        }
       }
     }
 
@@ -77,7 +75,7 @@ $(document).ready(function(){
 <div class="container">
 
 <div class="page-header" id="preview">
-<h1>Preview <small>Step 1 of 4</small></h1>
+<h1>Preview <small>Step 1 of 5</small></h1>
 </div>
 
 <!-- product details -->
@@ -100,8 +98,26 @@ $(document).ready(function(){
 </div>
 
 <div class="page-header" id="shipping">
-<h1>Shipping <small>Step 2 of 4</small></h1>
+<h1>Contact <small>Step 2 of 5</small></h1>
 </div>
+
+  <div class="row">
+    <div class="col-xs-4">
+      <form>
+        <!-- full-name input-->
+        <div class="form-group">
+            <label class="control-label">Contact email</label>
+                <input id="email" name="email" type="email" placeholder="you@example.com"
+                class="form-control form-control-large">
+            <p class="help-block">Email address to keep track of this order</p>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="page-header" id="shipping">
+  <h1>Shipping <small>Step 3 of 5</small></h1>
+  </div>
 
   <div class="row">
     <div class="col-xs-4">
@@ -144,6 +160,12 @@ $(document).ready(function(){
                         <input id="postal-code" name="postal-code" type="text" placeholder="zip or postal code"
                         class="form-control form-control-large">
                 </div>
+                <!-- postal-code input-->
+                <div class="form-group">
+                    <label class="control-label">Contact Phone</label>
+                        <input id="billing-phone" name="phone" type="tel" placeholder="(000) 000-0000"
+                        class="form-control form-control-large">
+                </div>
                 <!-- country select -->
                 <div class="form-group">
                     <label class="control-label">Country</label>
@@ -160,12 +182,12 @@ $(document).ready(function(){
   </div>
 
 <div class="page-header" id="billing">
-<h1>Billing address <small>Step 3 of 4</small></h1>
+<h1>Billing address <small>Step 4 of 5</small></h1>
 </div>
 
   <div class="row">
     <div class="col-xs-4">
-     <form>
+     <form id="billing-form">
        <div class="checkbox">
           <label>
             <input type="checkbox" id="same-as-shipping"> Same as shipping address
@@ -210,6 +232,12 @@ $(document).ready(function(){
                 <input id="billing-postal-code" name="billing-postal-code" type="text" placeholder="zip or postal code"
                 class="form-control form-control-large">
         </div>
+        <!-- postal-code input-->
+        <div class="form-group">
+            <label class="control-label">Contact Phone</label>
+                <input id="billing-phone" name="billing-phone" type="tel" placeholder="(000) 000-0000"
+                class="form-control form-control-large">
+        </div>
         <!-- country select -->
         <div class="form-group">
             <label class="control-label">Country</label>
@@ -227,7 +255,7 @@ $(document).ready(function(){
   </div>
 
 <div class="page-header" id="billing">
-<h1>Payment <small>Step 4 of 4</small></h1>
+<h1>Payment <small>Step 5 of 5</small></h1>
 </div>
 
 <div class="row">
