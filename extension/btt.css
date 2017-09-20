@@ -11,6 +11,13 @@
     background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAACJUlEQVQ4T53TTWhTQRAA4Jnd916SJqloFU3SohGlVUFvnmNFPShNohcPFavQJKVqvakHoejFi+AfLe+9CEovIhgSD4KIVC+CB1FQ0iBVeGnjT8Rq2jQ1Zn8kwUjVWCRz2mWYD2Z2FmFR7DSLqx28uF2B8klB1C2Ick5W8wJaqWSvKmC7NCOdT58MuPP1Mqwf9o9MHGfqigtSSqZAeZyDLYCCpQEBJCqbCVTGOajdgKhobObUnYFN16q1NWDPmPRopY8ZQfCygrxv8r5nw/rA222o0BgCFQW2/OyjQWe+J/4uw9F+i/LvMaau2XrvCH6o+UEjl6aCPfjq9N5wL+RT09LX+SyKpcXtwbAkPd5chqN62ibmd3Ci7Ur1t3fh3hErQql6Pgcev49nLwKFzrvRtd2/Ff+8BI2pBBEV/qbF3+f/lksjsnO4T39fQODDnLYlCMy/1kQxnoisG2wEhA1rlJGWowvctVGjXw5QjsMYNiYPcnDpgCAFKHaFz91MxvzRRkDIyMY50XaDgGUoARRZiNSGGNBnV7qh2EuAx1Cyx/8CgrplIlCVE/KipLnGHh5u/fzrGatQUJ/KLAWE9Ox1ANSS0Y5Df+3B/wNES0bbmwSMbBwksTUNhE3LFJI4UpGO3qZaCOuWKVBxpCK+JoFRyxR0KcCYnpCAzyvqqiuN9kCrfBpCRJbs9zYeYujqyyFubztBAGq/+M+QAEjKs2eSx7pu13M/AA+ZBSb4lXRQAAAAAElFTkSuQmCC') !important;
 }
 
+.btt-body {
+    width: 520px;
+    height: 520px;
+    background-image: url('http://btt.brbrb.us/Gear.gif');
+    background-position: center center;
+}
+
 .btt-body > img {
     width: 100%;
 }
