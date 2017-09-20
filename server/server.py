@@ -1,10 +1,12 @@
 from functools import partial
+import json
 import os
+import re
 from StringIO import StringIO
 import subprocess
 import tempfile
 import urllib
-import json
+import sys
 
 from flask import (
     abort,
@@ -20,6 +22,7 @@ from PIL import Image
 
 import requests
 from requests.auth import HTTPBasicAuth
+from werkzeug.contrib.cache import FileSystemCache, NullCache, SimpleCache
 
 app = Flask(__name__)
 app.debug = True
@@ -37,12 +40,14 @@ PRE_RENDER_PATH = os.getenv(
   '/tmp/pre_render/')
 
 PRE_RENDER_ENABLED = os.getenv('PRE_RENDER_ENABLED', 'false') == 'true'
+PRE_RENDER_PREFIX = os.getenv('PRE_RENDER_PREFIX', '0001') # change to clear cache
 
 if not os.path.exists(PRE_RENDER_PATH):
   os.makedirs(PRE_RENDER_PATH)
 
 # constants
 TEMPLATE = 'template.html'
+SHIPPING_TEMPLATE = 'shipping.html'
 OEMBED_ENDPOINT = 'https://publish.twitter.com/oembed'
 STATUS_ENDPOINT = 'https://twitter.com/statuses/'
 ZOOM = '3'
@@ -59,6 +64,13 @@ DEFAULT_OPTIONS = {
 # more params: https://dev.twitter.com/rest/reference/get/statuses/oembed
 
 LOG = open('/opt/buythistweet/buythistweet.log', 'a')
+
+if PRE_RENDER_ENABLED:
+  render_cache = FileSystemCache(PRE_RENDER_PATH)
+else:
+  render_cache = NullCache()
+
+oembed_cache = SimpleCache() # memcached would be better
 
 @app.route('/')
 def index():
@@ -101,9 +113,10 @@ def get_tweet_image_stream(tweet_id):
   '''
   Get tweet screenshot image as a stream. May use pre-rendered version.
   '''
-  pre_rendered_path = os.path.join(PRE_RENDER_PATH, tweet_id + '.png')
-  if PRE_RENDER_ENABLED and os.path.exists(pre_rendered_path):
-    return open(pre_rendered_path, 'rb')
+  cache_key = 'twimg-%s-%s' % (PRE_RENDER_PREFIX, tweet_id)
+  cached_image = render_cache.get(cache_key)
+  if cached_image:
+    return StringIO(cached_image)
 
   outfd, outsock_path = screenshot_tweet(tweet_id)
 
@@ -115,11 +128,8 @@ def get_tweet_image_stream(tweet_id):
     outsock.close()
     os.remove(outsock_path)
 
-  if PRE_RENDER_ENABLED:
-    with open(pre_rendered_path, 'w') as f:
-      f.write(image_data.read())
-
-    image_data.seek(0)
+  if PRE_RENDER_ENABLED: # check flag despite possible NullCache to avoid needless unpacking large byte arr
+    render_cache.set(cache_key, image_data.getvalue())
 
   return image_data
 
@@ -161,13 +171,84 @@ def read_and_post_process(path):
   img_buffer.seek(0) # only works on StringIO, not cStringIO
   return img_buffer
 
-# render template for phantomjs to render
 @app.route('/render_template')
 def get_html():
+  """
+  Render product creative image in html.
+  """
   tweet_id=flask_request.args.get('tweet_id')
-  html = fetch_tweet(tweet_id)
+  html = fetch_tweet(tweet_id)['html']
   #print html
   return render_template(TEMPLATE, embed=html)
+
+# STUB
+def get_product_title(product_type_code):
+  return "Men's Large T-shirt"
+
+def get_product_size_name(size):
+  sizes = {
+    'm': 'medium',
+    'l': 'large',
+    's': 'small',
+    'xs': 'extra small',
+    'xl': 'extra large'}
+  return sizes[size.lower()]
+
+# STUB
+def get_color(color):
+  if color.lower() not in ('white', 'black', 'blue', 'green', 'red'):
+    raise IndexError("color not found")
+  else:
+    return color
+
+# STUB
+def get_product_cost(product_type_code, color, size, quantity):
+  return 8.95 * quantity
+
+# STUB
+def get_shipping_cost(product_type_code, color, size, quantity):
+  return 2.95 + (quantity * .75)
+
+@app.route('/order_form')
+def render_checkout():
+  try:
+    tweet_id = flask_request.args['tweet_id']
+    product_color = flask_request.args['color']
+    quantity = int(flask_request.args['quantity'])
+    product_type = flask_request.args['product-type']
+    product_size = flask_request.args['size']
+  except KeyError as e:
+    return "400 missing param %s" % e.args[0], 400, {'Content-Type': 'text/plain'}
+  except TypeError:
+    return "400 bad param", {'Content-Type': 'text/plain'}
+
+  product_color = get_color(product_color)
+  product_size = get_product_size_name(product_size)
+  product_name = get_product_title(product_type)
+  subtotal = get_product_cost(product_type, product_color, product_size, quantity)
+  shipping_cost = get_shipping_cost(product_type, product_color, product_size, quantity)
+  total_cost = shipping_cost + subtotal
+
+  preview_img = url_for('get_tshirt_mockup', tweet_id=tweet_id, color=product_color)
+
+  # improper way of getting tweet info but avoids authenticated / rate limited api call
+  tweet_info = fetch_tweet(tweet_id)
+  author_handle = re.compile(r'https?://twitter\.com/([^/]+)/').search(tweet_info['url']).group(1)
+  tweet_text = re.compile(r'<a\b[^>]+>pic.twitter.com.*?</a>|<.*?>', re.S).sub('', tweet_info['html'])
+  author_name = tweet_info['author_name']
+
+  return render_template(SHIPPING_TEMPLATE,
+    product_name=product_name,
+    author_handle=author_handle,
+    author_name=author_name,
+    tweet_text=tweet_text,
+    quantity=quantity,
+    preview_img=preview_img,
+    color=product_color,
+    size=product_size,
+    subtotal=subtotal,
+    shipping_cost=shipping_cost,
+    total_cost=total_cost)
 
 @app.route('/press/<path:endpoint>', methods=('GET', 'POST'))
 def press_proxy(endpoint):
@@ -208,6 +289,10 @@ def press_proxy(endpoint):
     content_type=response.headers.get('Content-type'))
 
 def fetch_tweet(tweet_id):
+  cached = oembed_cache.get(tweet_id)
+  if cached:
+    return json.loads(cached)
+
   get_tweet_url = STATUS_ENDPOINT + urllib.quote(tweet_id)
   print get_tweet_url
   redir = requests.head(get_tweet_url, allow_redirects=True)
@@ -220,10 +305,12 @@ def fetch_tweet(tweet_id):
   print get_embed_url
   response = requests.get(get_embed_url)
 
+  oembed_cache.set(tweet_id, response.text)
+
   response_json = response.json()
 
   # note: can tell the type of the tweet using "type" field
-  return response_json['html']
+  return response_json
 
 def scalable_press_mockup_api(tweet_id, img_data, color):
   fields = {
@@ -247,8 +334,6 @@ def scalable_press_mockup_api(tweet_id, img_data, color):
     auth=HTTPBasicAuth('', SCALABLE_PRESS_KEY))
 
   return r.json()
-
-
 
 if __name__ == '__main__':
   app.run(threaded=True, port=PORT) # threaded is important, or else it will hang badly on render.

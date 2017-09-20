@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Bootstrap 101 Template</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<style>
+.subtotal td, .subtotal th {
+  padding: .25em;
+}
+</style>
+
+<script>
+
+$(document).ready(function(){
+  $('#same-as-shipping').change(function() {
+    if (this.checked) {
+      $('#billing-details').hide(400);
+    } else {
+      $('#billing-details').show(400);
+    }
+  });  
+});
+
+</script>
+  </head>
+<body>
+
+<div class="container">
+
+<div class="page-header" id="preview">
+<h1>Preview <small>Step 1 of 4</small></h1>
+</div>
+
+<!-- product details -->
+<div class="row">
+  <div class="col-sm-6 col-md-4 well">
+    <div class="thumbnail">
+      <img src='{{ preview_img }}' height=300 width=250>
+      <div class="caption">
+        <h3>{{ product_name }}</h3>
+        <p>{{ tweet_text|safe }}</p>
+        <table class="subtotal ">
+        <tr><th>Size:</td><td>{{ size|title }}</td></tr>
+        <tr><th>Color:</td><td>{{ color|title }}</td></tr>
+        <tr><th>Quantity:</td><td>{{ quantity }}</td></tr>
+        <tr><th>Subtotal:</td><td>${{ subtotal|round(2) }}</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page-header" id="shipping">
+<h1>Shipping <small>Step 2 of 4</small></h1>
+</div>
+
+  <div class="row">
+    <div class="col-xs-4">
+     <form>
+         
+                <!-- full-name input-->
+                <div class="form-group">
+                    <label class="control-label">Full Name</label>
+                        <input id="full-name" name="full-name" type="text" placeholder="full name"
+                        class="form-control form-control-large">
+                </div>
+                <!-- address-line1 input-->
+                <div class="form-group">
+                    <label class="control-label">Address Line 1</label>
+                        <input id="address-line1" name="address-line1" type="text" placeholder="address line 1"
+                        class="form-control form-control-large">
+                        <p class="help-block">Street address, P.O. box, company name, c/o</p>
+                </div>
+                <!-- address-line2 input-->
+                <div class="form-group">
+                    <label class="control-label">Address Line 2</label>
+                        <input id="address-line2" name="address-line2" type="text" placeholder="address line 2"
+                        class="form-control form-control-large">
+                        <p class="help-block">Apartment, suite , unit, building, floor, etc.</p>
+                </div>
+                <!-- city input-->
+                <div class="form-group">
+                    <label class="control-label">City / Town</label>
+                        <input id="city" name="city" type="text" placeholder="city" class="form-control form-control-large">
+                </div>
+                <!-- region input-->
+                <div class="form-group">
+                    <label class="control-label">State / Province / Region</label>
+                        <input id="region" name="region" type="text" placeholder="state / province / region"
+                        class="form-control form-control-large">
+                </div>
+                <!-- postal-code input-->
+                <div class="form-group">
+                    <label class="control-label">Zip / Postal Code</label>
+                        <input id="postal-code" name="postal-code" type="text" placeholder="zip or postal code"
+                        class="form-control form-control-large">
+                </div>
+                <!-- country select -->
+                <div class="form-group">
+                    <label class="control-label">Country</label>
+                        <select id="country" name="country" class="form-control form-control-large">
+                            <option value="" selected="selected">(please select a country)</option>
+                            <option value="US">United States</option>
+                            <option value="CA">Canada</option>
+                            <option value="JP">Japan</option>
+
+                        </select>
+                </div>
+        </form>
+</div>
+  </div>
+
+<div class="page-header" id="billing">
+<h1>Billing address <small>Step 3 of 4</small></h1>
+</div>
+
+  <div class="row">
+    <div class="col-xs-4">
+     <form>
+       <div class="checkbox">
+          <label>
+            <input type="checkbox" id="same-as-shipping"> Same as shipping address
+          </label>
+        </div>
+        <div id="billing-details">
+        
+        <!-- full-name input-->
+        <div class="form-group">
+            <label class="control-label">Full Name</label>
+                <input id="full-name" name="full-name" type="text" placeholder="full name"
+                class="form-control form-control-large">
+        </div>
+        <!-- address-line1 input-->
+        <div class="form-group">
+            <label class="control-label">Address Line 1</label>
+                <input id="address-line1" name="address-line1" type="text" placeholder="address line 1"
+                class="form-control form-control-large">
+                <p class="help-block">Street address, P.O. box, company name, c/o</p>
+        </div>
+        <!-- address-line2 input-->
+        <div class="form-group">
+            <label class="control-label">Address Line 2</label>
+                <input id="address-line2" name="address-line2" type="text" placeholder="address line 2"
+                class="form-control form-control-large">
+                <p class="help-block">Apartment, suite , unit, building, floor, etc.</p>
+        </div>
+        <!-- city input-->
+        <div class="form-group">
+            <label class="control-label">City / Town</label>
+                <input id="city" name="city" type="text" placeholder="city" class="form-control form-control-large">
+        </div>
+        <!-- region input-->
+        <div class="form-group">
+            <label class="control-label">State / Province / Region</label>
+                <input id="region" name="region" type="text" placeholder="state / province / region"
+                class="form-control form-control-large">
+        </div>
+        <!-- postal-code input-->
+        <div class="form-group">
+            <label class="control-label">Zip / Postal Code</label>
+                <input id="postal-code" name="postal-code" type="text" placeholder="zip or postal code"
+                class="form-control form-control-large">
+        </div>
+        <!-- country select -->
+        <div class="form-group">
+            <label class="control-label">Country</label>
+                <select id="country" name="country" class="form-control form-control-large">
+                    <option value="" selected="selected">(please select a country)</option>
+                    <option value="US">United States</option>
+                    <option value="CA">Canada</option>
+                    <option value="JP">Japan</option>
+                </select>
+        </div>
+
+      </div>
+        </form>
+</div>
+  </div>
+
+<div class="page-header" id="billing">
+<h1>Payment <small>Step 4 of 4</small></h1>
+</div>
+
+<div class="row">
+  stripe gateway goes here
+
+       <div class="checkbox">
+          <label>
+            <input type="checkbox"> I totally agree with the terms of service
+          </label>
+        </div>
+</div>
+
+</div>
+  </body>
+</html>
