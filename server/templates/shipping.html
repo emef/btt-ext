@@ -8,9 +8,15 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="https://www.paypalobjects.com/api/checkout.js"></script>
 <style>
 .subtotal td, .subtotal th {
   padding: .25em;
+}
+
+#submit-help {
+  padding: .75em;
+  display: none;
 }
 
 body {
@@ -18,6 +24,15 @@ body {
   padding-top: 50px;
   padding-bottom: 200px;
 }
+
+.tweet-text {
+  font-size: 14px;
+  line-height: 20px;
+  padding: .5em;
+  border-left: 2px solid #c0deed;
+  border-right: 2px solid #c0deed;
+}
+
 </style>
 
 <script>
@@ -32,11 +47,16 @@ $(document).ready(function(){
     $('#billing-form input').parent().removeClass('has-error');
   });
 
-  $('.form-group input').change(function() {
+  $('.form-group input, .form-group select').change(function() {
     $(this).parent().removeClass('has-error');
-    $('#order-button').removeAttr('disabled');
   });
 
+  $("#the-form").submit(function(e){
+    e.preventDefault();
+  });
+});
+
+(function () {
   var required_fields = [
     "email", "full-name", "address-line1", "city", "region", "country"
   ];
@@ -45,34 +65,148 @@ $(document).ready(function(){
     "billing-full-name", "billing-address-line1", "billing-city", "billing-region", "billing-country"
   ];
 
-  $('#order-button').click(function(e) {
-    e.preventDefault();
-    var isValid = true;
+  var check_validate = function(updateUI) {
+    var missingFields = false;
+    var notChecked = false;
 
+    var fields_to_check = required_fields;
     if (!$('#same-as-shipping').prop('checked')) {
-      required_fields = required_fields.concat(billing_required_fields);
+      fields_to_check = required_fields.concat(billing_required_fields);
     }
 
     for (var i = 0; i < required_fields.length; i++) {
       var el = $('#' + required_fields[i]);
       if (el.val().length === 0) {
-        el.parent().addClass('has-error');
-        isValid = false;
+        updateUI && el.parent().addClass('has-error');
+        missingFields = true;
       } else {
-        el.parent().removeClass('has-error');
+        updateUI && el.parent().removeClass('has-error');
       }
     }
 
-    if (!isValid) {
-      $('#submit-help').text("please fix required fields");
-      $('#order-button').attr('disabled', 'disabled');
-    } else if (!$('#like-tos').prop('checked')) {
-      $('#submit-help').text("Don't you like the terms of service?");
-    } else {
-      $('#submit-help').text("Would have submitted");
+    if (!$('#like-tos').prop('checked')) {
+      notChecked = true;
     }
-  });
-});
+
+    var isValid = !missingFields && !notChecked;
+
+    if (updateUI) {
+      if (missingFields) {
+        $('#submit-help').text("please fix required fields");
+      } else if (notChecked) {
+        $('#submit-help').text("Don't you like the terms of service?");
+      }
+
+      if (!isValid) {
+        $('#submit-help').show(300);
+      } else {
+        $('#submit-help').hide(300);
+      }
+    }
+
+    return isValid;
+  };
+
+  var shipping_details = {
+    recipient_name: "",
+    line1: "",
+    line2: "",
+    city: "",
+    country_code: "",
+    postal_code: "",
+    phone: "",
+    state: ""
+  };
+
+  var transaction_definition = {
+    amount: { total: '{{ total_cost }}', currency: 'USD' },
+    details: {
+      subtotal: "{{ subtotal }}",
+      tax: "{{ tax }}",
+      shipping: "{{ shipping_cost }}"
+    },
+    item_list: {
+      items: [
+        {
+          name: "{{ product_name }}",
+          quantity: "{{ quantity }}",
+          price: "{{ subtotal }}",
+          sku: "{{ product_type }}-{{ tweet_id }}",
+        },
+      ],
+      shipping_address: shipping_details
+    }
+  };
+
+  var update_payment_shipping = function() {
+    shipping_details.recipient_name = $('#full-name').value();
+    shipping_details.line1 = $('address-line1').value();
+    shipping_details.line2 = $('address-line2').value();
+    shipping_details.city = $('city').value();
+    shipping_details.country_code = $('country').value();
+    shipping_details.postal_code = $('postal-code').value();
+    shipping_details.phone = $('phone').value();
+    shipping_details.state = $('region').value();
+  };
+
+  var reenable_callback = function(){};
+
+  var payment_definition = {
+
+    env: 'sandbox', // sandbox | production
+
+    style: {
+      label: 'buynow',
+      fundingicons: true, // optional
+      branding: true, // optional
+      size:  'small', // small | medium | large | responsive
+      shape: 'rect',   // pill | rect
+      color: 'gold'   // gold | blue | silve | black
+    },
+
+    // Create a PayPal app: https://developer.paypal.com/developer/applications/create
+
+    client: {
+      sandbox:    'AZDxjDScFpQtjWTOUtWKbyN_bDt4OgqaF4eYXlewfBP4-8aqX3PiV8e1GWU6liB2CUXlkA59kJXE7M6R',
+      production: '<insert production client id>'
+    },
+
+    validate: function(actions) {
+      if (check_validate(false)) {
+        actions.enable();
+        reenable_callback = function() {};
+      } else {
+        actions.disable();
+        reenable_callback = function() { actions.enable(); };
+      }
+    },
+
+    onClick: function() {
+      if (check_validate(true)) {
+        reenable_callback();
+      }
+    },
+
+    payment: function(data, actions) { // user clicks on pay button
+      update_payment_shipping();
+      return actions.payment.create({
+        transactions: [ transaction_definition ]
+      });
+    },
+
+    onAuthorize: function(data, actions) { // user finishes payment
+      $('#payment_data').value(JSON.stringify(actions.payment));
+      $('#the-form').submit();
+
+      // To execute payment immediately:
+      //return actions.payment.execute().then(function() {
+        //window.alert('Payment Complete!');
+      //});
+    }
+  };
+
+  paypal.Button.render(payment_definition, '#paypal-button');
+})();
 
 </script>
   </head>
@@ -91,6 +225,18 @@ $(document).ready(function(){
 </nav>
 
 <div class="container">
+<form id="theform" method="POST" action="/order_finished">
+
+<input type="hidden" name="product_type" value="{{ product_type }}">
+<input type="hidden" name="size" value="{{ size }}">
+<input type="hidden" name="quantity" value="{{ quantity }}">
+<input type="hidden" name="color" value="{{ color }}">
+<input type="hidden" name="tweet_id" value="{{ tweet_id }}">
+<input type="hidden" name="subtotal" value="{{ subtotal }}">
+<input type="hidden" name="tax" value="{{ tax }}">
+<input type="hidden" name="shiping_cost" value="{{ shiping_cost }}">
+<input type="hidden" name="total_cost" value="{{ total_cost }}">
+<input type="hidden" id="payment_data" name="payment_data" value="">
 
 <div class="page-header" id="preview">
 <h1>Preview <small>Step 1 of 5</small></h1>
@@ -103,12 +249,12 @@ $(document).ready(function(){
       <img src='{{ preview_img }}' height=300 width=250>
       <div class="caption">
         <h3>{{ product_name }}</h3>
-        <p>{{ tweet_text|safe }}</p>
+        <p class="tweet-text">{{ tweet_text|safe }}</p>
         <table class="subtotal ">
         <tr><th>Size:</td><td>{{ size|title }}</td></tr>
         <tr><th>Color:</td><td>{{ color|title }}</td></tr>
         <tr><th>Quantity:</td><td>{{ quantity }}</td></tr>
-        <tr><th>Subtotal:</td><td>${{ subtotal|round(2) }}</td></tr>
+        <tr><th>Subtotal:</td><td>${{ "%0.2f"|format(subtotal) }}</td></tr>
         </table>
       </div>
     </div>
@@ -121,15 +267,12 @@ $(document).ready(function(){
 
   <div class="row">
     <div class="col-xs-4">
-      <form>
-        <!-- full-name input-->
         <div class="form-group">
             <label class="control-label">Contact email</label>
                 <input id="email" name="email" type="email" placeholder="you@example.com"
                 class="form-control form-control-large">
             <p class="help-block">Email address to keep track of this order</p>
         </div>
-      </form>
     </div>
   </div>
 
@@ -139,7 +282,6 @@ $(document).ready(function(){
 
   <div class="row">
     <div class="col-xs-4">
-     <form>
 
                 <!-- full-name input-->
                 <div class="form-group">
@@ -195,7 +337,6 @@ $(document).ready(function(){
 
                         </select>
                 </div>
-        </form>
 </div>
   </div>
 
@@ -205,7 +346,6 @@ $(document).ready(function(){
 
   <div class="row">
     <div class="col-xs-4">
-     <form id="billing-form">
        <div class="checkbox">
           <label>
             <input type="checkbox" id="same-as-shipping"> Same as shipping address
@@ -268,7 +408,6 @@ $(document).ready(function(){
         </div>
 
       </div>
-        </form>
 </div>
   </div>
 
@@ -277,23 +416,37 @@ $(document).ready(function(){
 </div>
 
 <div class="row">
-     <div class="col-xs-4">
-   stripe gateway goes here
-<form>
+  <div class="col-xs-4">
+     <div class="checkbox">
+        <label>
+          <input type="checkbox" id="like-tos" name="like-tos"> I totally agree with the terms of service
+        </label>
+      </div>
+  </div>
+</div>
 
-       <div class="checkbox">
-          <label>
-            <input type="checkbox" id="like-tos" name="like-tos"> I totally agree with the terms of service
-          </label>
-        </div>
+<div class="row">
+  <div class="col-xs-4">
+    <h3>Totals</h3>
+    <table class="subtotal ">
+    <tr><th>Men's {{size|title}} T-shirts x {{quantity}}:</td><td>${{ "%0.2f"|format(subtotal) }}</td></tr>
+    <tr><th>Shipping</td><td>${{ "%0.2f"|format(shipping_cost) }}</td></tr>
+    <tr><th>Tax</td><td>${{ "%0.2f"|format(tax) }}</td></tr>
+    <tr><th>Total cost</td><td>${{ "%0.2f"|format(total_cost) }}</td></tr>
+    </table>
+  </div>
+</div>
 
-<button class="btn btn-primary" id="order-button">Order Now</button>
-<p class="help-block" id="submit-help"></p>
+
+<div class="row">
+  <div class="col-xs-4">
+    <p>&nbsp;</p>
+    <div id="paypal-button"></div>
+    <p class="bg-danger" id="submit-help"></p>
+  </div>
+</div>
 
 </form>
-</div>
-</div>
-
 </div>
   </body>
 </html>
