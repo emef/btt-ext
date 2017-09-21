@@ -1,9 +1,11 @@
+import fcntl
 import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
+import time
 import urllib
 from functools import partial
 from StringIO import StringIO
@@ -42,11 +44,20 @@ RENDERED_MOCKUP_PATH = os.getenv(
   'RENDERED_MOCKUP_PATH',
   '/tmp/img/mockups/')
 
+LOCKS_PATH = os.getenv(
+  'LOCKS_PATH',
+  '/tmp/locks')
+
+GET_TWEET_TIMEOUT = 8  # 8 second timeout
+
 if not os.path.exists(RENDERED_TWEET_PATH):
   os.makedirs(RENDERED_TWEET_PATH)
 
 if not os.path.exists(RENDERED_MOCKUP_PATH):
   os.makedirs(RENDERED_MOCKUP_PATH)
+
+if not os.path.exists(LOCKS_PATH):
+  os.makedirs(LOCKS_PATH)
 
 # constants
 TEMPLATE = 'template.html'
@@ -121,25 +132,43 @@ def get_tweet_image_stream(tweet_id):
   '''
   Get tweet screenshot image as a stream. May use pre-rendered version.
   '''
-  pre_rendered_path = os.path.join(RENDERED_TWEET_PATH, tweet_id + '.png')
-  if os.path.exists(pre_rendered_path):
-    return open(pre_rendered_path, 'rb')
+  start = time.time()
 
-  outfd, outsock_path = screenshot_tweet(tweet_id)
+  pre_rendered_path = os.path.join(RENDERED_TWEET_PATH, tweet_id + '.png')
+  lock_path = os.path.join(LOCKS_PATH, tweet_id + '.lock')
+  lock_file = open(lock_path, 'w+')
 
   try:
-    image_data = read_and_post_process(outsock_path)
+    while (time.time() - start) < GET_TWEET_TIMEOUT:
+      if os.path.exists(pre_rendered_path):
+        return open(pre_rendered_path, 'rb')
+
+      try:
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+      except IOError:
+        time.sleep(1)
+        continue
+
+      outfd, outsock_path = screenshot_tweet(tweet_id)
+
+      try:
+        image_data = read_and_post_process(outsock_path)
+
+      finally:
+        outsock = os.fdopen(outfd, 'w')
+        outsock.close()
+        os.remove(outsock_path)
+
+      with open(pre_rendered_path, 'w') as f:
+        f.write(image_data.read())
+
+      image_data.seek(0)
+      return image_data
 
   finally:
-    outsock = os.fdopen(outfd, 'w')
-    outsock.close()
-    os.remove(outsock_path)
-
-  with open(pre_rendered_path, 'w') as f:
-    f.write(image_data.read())
-
-  image_data.seek(0)
-  return image_data
+    lock_file.close()
+    try: os.remove(lock_path)
+    except: pass
 
 def screenshot_tweet(tweet_id):
   '''
