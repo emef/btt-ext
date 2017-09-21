@@ -132,7 +132,7 @@ function onClickBuyThisTweet(tweetId, handle) {
 
   var checkout = 'http://btt.brbrb.us/order_form?tweet_id=' + tweetId + '&color=White&quantity=1&product-type=1&size=L';
 
-  _modalFooter.append($('<div class="btt-user"><a href="' + checkout + '" class="btn btn-primary">Buy a tweet from ' +
+  _modalFooter.append($('<div class="btt-user"><a href="' + checkout + '" class="btn btn-primary">Buy this tweet from ' +
                         '<span class="btt-handle">@' + handle + '</span>' +
                         '</a></div>'));
 
