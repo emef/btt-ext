@@ -29,6 +29,8 @@ jQuery(document).ready(function() {
     jQuery('.twitter-tweet').contents().find('.EmbeddedTweet').css('border-color', '#c0deed');
     jQuery('.twitter-tweet').contents().find('.EmbeddedTweet').css('border-width', '6px');
     jQuery('.twitter-tweet').contents().find('.EmbeddedTweet').css('border-radius', '18px');
+    jQuery('.twitter-tweet').contents().find('time').each(function() { $(this).text($(this).text().replace(/^[^-]+- /, '')); });
+    jQuery('.twitter-tweet').contents().find('.dateline').css('float', 'right').detach().prependTo(jQuery('.twitter-tweet').contents().find('.Tweet-header'));
 
     jQuery('.twitter-tweet').contents().find('.EmbeddedTweet--mediaForward .EmbeddedTweet-tweet').css('border-width', '6px');
     jQuery('.twitter-tweet').contents().find('.EmbeddedTweet--mediaForward .EmbeddedTweet-tweet').css('border-top', '0');
