@@ -1,3 +1,10 @@
+var COLORS = {
+  'White': '#ffffff',
+  'Navy': 'rgb(18,40,76)',
+  'Dark Grey': 'rgb(84,88,90)',
+  'Cardinal': 'rgb(159,32,50)',
+}
+
 var _log;
 var _modal, _modalContainer, _modalOverlay, _modalBody, _modalFooter;
 
@@ -73,8 +80,55 @@ function onClickBuyThisTweet(tweetId) {
   log('clicked', tweetId);
   showModal();
 
-  var src = 'http://btt.brbrb.us/get_tshirt_mockup?tweet_id=' + tweetId + '&color=White';
-  _modalBody.append($('<img src="' + src + '" />'));
+  var previewContainer = $('<div class="btt-preview-container" />');
+  var colorSelectorContainer = $('<div class="btt-color-selector-container" />');
+
+  var divs = [];
+  var selectors = [];
+
+  for (color in COLORS) {
+    if (COLORS.hasOwnProperty(color)) {
+      var src = 'http://btt.brbrb.us/get_tshirt_mockup?tweet_id=' + tweetId + '&color=' + color;
+      var img = $('<img class="btt-preview" src="' + src + '" />');
+      var div = $('<div class="btt-preview btt-loading" />');
+      var selector = $('<div class="btt-color-selector" style="background: ' + COLORS[color] + ';" />');
+      var index = divs.length;
+
+      img.on('load', (function(div) {
+        return function(e) {
+          div.removeClass('btt-loading');
+          log('image loaded');
+        };
+      })(div));
+
+      selector.on('click', (function(div, selector) {
+        return function(e) {
+          for (var i=0; i<divs.length; i++) {
+            divs[i].hide();
+            selectors[i].removeClass('btt-color-selected');
+          }
+
+          selector.addClass('btt-color-selected');
+          div.show();
+        };
+      })(div, selector));
+
+      divs.push(div);
+      selectors.push(selector);
+
+      div.hide();
+      div.append(img);
+      previewContainer.append(div);
+      colorSelectorContainer.append(selector);
+    }
+  }
+
+  // default to first color is displayed
+  divs[0].show();
+  selectors[0].addClass('btt-color-selected');
+
+  _modalBody.append(previewContainer);
+  _modalBody.append(colorSelectorContainer);
 
   // TODO: dynamic tweet author
   var handle = 'Interior';

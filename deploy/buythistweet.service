@@ -12,7 +12,7 @@ Environment=SCALABLE_PRESS_KEY=test_la9o2fzGIt7eZjQk5dintg
 Environment=RENDERED_TWEET_PATH=/opt/buythistweet/img/tweets/
 Environment=RENDERED_MOCKUP_PATH=/opt/buythistweet/img/mockups/
 ExecStart=/opt/virtualenv/buythistweet/bin/gunicorn --pid /run/buythistweet/pid   \
-          --workers 4 --bind 127.0.0.1:5000  server:app
+          --workers 16 --bind 127.0.0.1:5000  server:app
 ExecReload=/bin/kill -s HUP $MAINPID
 ExecStop=/bin/kill -s TERM $MAINPID
 PrivateTmp=true
