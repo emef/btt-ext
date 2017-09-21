@@ -76,7 +76,7 @@ function escHandler(e) {
   }
 }
 
-function onClickBuyThisTweet(tweetId) {
+function onClickBuyThisTweet(tweetId, handle) {
   log('clicked', tweetId);
   showModal();
 
@@ -130,17 +130,18 @@ function onClickBuyThisTweet(tweetId) {
   _modalBody.append(previewContainer);
   _modalBody.append(colorSelectorContainer);
 
-  // TODO: dynamic tweet author
-  var handle = 'Interior';
-  _modalFooter.append($('<div class="btt-user">Buy a tweet from ' +
+  var checkout = 'http://btt.brbrb.us/order_form?tweet_id=' + tweetId + '&color=White&quantity=1&product-type=1&size=L';
+
+  _modalFooter.append($('<div class="btt-user"><a href="' + checkout + '" class="btn btn-primary">Buy a tweet from ' +
                         '<span class="btt-handle">@' + handle + '</span>' +
-                        '</div>'));
+                        '</a></div>'));
 
 }
 
 setInterval(function() {
   $('div .tweet').each(function(i, tweet) {
     var tweetId = tweet.getAttribute('data-tweet-id');
+    var screenName = tweet.getAttribute('data-screen-name');
     var actionList = $(tweet).find('.js-actions');
 
     if (!tweetId || !actionList) {
@@ -158,7 +159,7 @@ setInterval(function() {
                              'data-original-title="Buy this tweet" />');
     var bttIcon = $('<span class="Icon Icon--medium Icon--btt"></span>');
 
-    $(bttDiv).click(function() { onClickBuyThisTweet(tweetId); });
+    $(bttDiv).click(function() { onClickBuyThisTweet(tweetId, screenName); });
 
     bttDiv.append(bttBtn);
     bttBtn.append(bttIconContainer);
