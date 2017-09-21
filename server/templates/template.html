@@ -39,6 +39,8 @@ jQuery(document).ready(function() {
     jQuery('.twitter-tweet').contents().find('.EmbeddedTweet--mediaForward .EmbeddedTweet-tweet').css('border-top-left-radius', '0');
     jQuery('.twitter-tweet').contents().find('.EmbeddedTweet--mediaForward .EmbeddedTweet-tweet').css('border-top-right-radius', '0');
 
+    jQuery('.twitter-tweet').contents().find('.MediaCard-borderOverlay').css('border', '0');
+
     // weirdly this "resets" the height.
     // the height defined in css is sometimes slightly wrong, removing the param somehow triggers something to recalculate it to the true value.
     jQuery('#twitter-widget-0').css('height', 0);
